@@ -1,6 +1,7 @@
 from .. import loss
 import torch
 
+
 def test_to_device():
     m = loss.GaussFilter(3)
     m = m.cuda()

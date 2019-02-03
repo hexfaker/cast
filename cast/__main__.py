@@ -18,10 +18,13 @@ def parse_args():
     parser.add_argument('--style', required=True)
     parser.add_argument('--content', required=True)
     parser.add_argument('--edge-loss', choices=['sobel', 'bsobel'])
-    parser.add_argument('--edge-loss-factor', type=float)
-    parser.add_argument('--style-factor', default='1e4', type=float)
+    parser.add_argument('--edge-loss-weight', '--elw', type=float)
+    parser.add_argument('--style-loss-weight', '--slw', default='1e4', type=float)
+    parser.add_argument('--content-loss-weight', '--clw', default='1e4', type=float)
     parser.add_argument('--results', required=True)
     parser.add_argument('--iterations', default=500, type=int)
+    parser.add_argument('--style-size', default=256, type=int)
+    parser.add_argument('--content-size', default=256, type=int)
 
     return parser.parse_args()
 
@@ -65,10 +68,13 @@ def main():
 
     for style_path in styles:
         for content_path in contents:
-            perform(net, content_path, style_path, args.results, 256, 256,
-                    args.style_factor, args.edge_loss, args.edge_loss_factor,
-                    args.iterations,
-                    device
-                    )
+            perform(
+                net, content_path, style_path,
+                args.results,
+                args.style_size, args.content_size,
+                args.style_loss_weight, args.edge_loss, args.edge_loss_weight,
+                args.iterations,
+                device
+            )
 
 main()
