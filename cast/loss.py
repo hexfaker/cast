@@ -47,6 +47,7 @@ class StyleLoss(nn.Module):
         loss = F.mse_loss(input_grams[0], self.target_grams[0])
         for i in range(1, len(input_grams)):
             loss = loss + F.mse_loss(input_grams[i], self.target_grams[i])
+        loss /= 5
         return loss
 
 
@@ -81,8 +82,8 @@ class SobelFilter(nn.Module):
         self.k = Parameter(self.make_kernel(), requires_grad=False)
 
     def forward(self, inp):
-        sobel_xy = F.conv2d(inp, self.k).squeeze()
-        magnitude = torch.sqrt((sobel_xy ** 2).sum(dim=0))
+        sobel_xy = F.conv2d(inp, self.k)
+        magnitude = torch.sqrt((sobel_xy ** 2).sum(dim=1, keepdim=True))
 
         res = [magnitude]
 

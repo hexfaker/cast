@@ -42,8 +42,7 @@ def perform(net, content_path, style_path, output_dir, style_height, content_hei
     )
 
     res = perform_transfer(net, content, style, style_factor, edge_loss,
-                           edge_loss_factor=edge_loss_factor, device=device,
-                           iterations=iterations)
+                           edge_weight=edge_loss_factor, iterations=iterations, device=device)
 
     save_image(res, res_filename)
 

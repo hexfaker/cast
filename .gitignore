@@ -32,6 +32,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+.idea/
 
 # Installer logs
 pip-log.txt
@@ -104,3 +105,11 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+
+# Temporary experiment results
+runs/
+
+# Ignored for right now, may be added later
+images/
+research.org
