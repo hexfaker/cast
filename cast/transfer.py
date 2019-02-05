@@ -46,8 +46,8 @@ class BfgsOptimizer:
 
         loss_value = self.loss.item()
 
-        if loss_value == float('inf'):
-            raise Exception('inf occured in optimization')
+        if torch.isfinite(self.loss).sum().item() == 0:
+            raise Exception(f'{self.loss} occured in optimization')
 
         self.progress.update()
         self.progress.set_description(f'{loss_value:.5f}')
@@ -68,13 +68,15 @@ class BfgsOptimizer:
 def perform_transfer(
     net: torch.nn.Module, content_image: torch.Tensor, style_image: torch.Tensor,
     style_weight: float, edge_loss: str = None, edge_loss_params: Dict[str, Any] = None,
-    edge_weight: float = 0, iterations=500, init='content', device=None,
+    edge_weight: float = 0, iterations=500, optim_params=None, init='content', device=None,
     progressbar_factory=tqdm.tqdm
 ):
     content_image = content_image.to(device)
     style_image = style_image.to(device)
     if edge_loss_params is None:
         edge_loss_params = {}
+
+    optim_params = optim_params or {}
 
     losses = [loss.ContentLoss(net, content_image).to(device),
               loss.StyleLoss(net, style_image).to(device)]
@@ -86,7 +88,9 @@ def perform_transfer(
 
     total_loss = loss.LinearCombinationLoss(net, losses, loss_factors).to(device)
 
-    runner = BfgsOptimizer(content_image, total_loss, progressbar_factory)
+    runner = BfgsOptimizer(content_image + torch.rand_like(content_image) / 1000, total_loss,
+                           progressbar_factory,
+                           **optim_params)
 
     runner.run(iterations)
 

@@ -10,7 +10,12 @@ from cast import *
 
 assert os.path.exists('./runs'), "Check working dir"
 
-RESOLUTIONS = [256, 512, 768, 1024]
+RESOLUTIONS = [
+    256,
+    512,
+    768,
+    1024
+]
 
 CONTENT_IMAGES = [
    # 'bottles',
@@ -68,17 +73,28 @@ for content_name in CONTENT_IMAGES:
                 
                 res = f'{image_dest}/c{content_size}__s{style_size}.jpg'
 
+                print(res)
+
                 try:
                     result = perform_transfer(
                         net, content, style,
                         1e5,
-                        'sobel', {'normalize':False}, 1e-1,
+                        'sobel', {}, 1e2,
                         device=device
                     )
                     save_image(result, res)
                 except Exception as e:
                     print(e)
                     FAIL_IMAGE.save(res)
+
+                res = f'{image_dest}/c{content_size}__s{style_size}_ne.jpg'
+
+                result = perform_transfer(
+                    net, content, style,
+                    1e5,
+                    device=device
+                )
+                save_image(result, res)
 
 
 
