@@ -160,14 +160,15 @@ class CannyEdgeDetector(nn.Module):
         return max_magnitudes
 
 
-class SobelEdgeLoss(nn.Module):
-    def __init__(self, target_img, device, normalize=True):
+class ThresholdedSobelEdgeLoss(nn.Module):
+    def __init__(self, target_img, device, normalize=True, threshold=0):
         super().__init__()
 
+        self.threshold = threshold
         self.f = SobelFilter(angles=False)
 
         self.to(device)
-        
+
         with torch.no_grad():
             self.target = self.f(target_img)[0]
 
@@ -177,9 +178,43 @@ class SobelEdgeLoss(nn.Module):
             else:
                 self.norm_denominator = 1.
 
+            self.target[self.target < self.threshold] = 0
+
     def forward(self, img, features=None):
         inp = self.f(img)[0] / self.norm_denominator
-        return F.mse_loss(inp, self.target)
+
+        res = (torch.max(
+            input=(self.target - inp),
+            other=torch.zeros_like(self.target)
+        ) ** 2).mean()
+        return res
+
+
+class SobelEdgeLoss(nn.Module):
+    def __init__(self, target_img, device, normalize=True, threshold=0):
+        super().__init__()
+
+        self.threshold = threshold
+        self.f = SobelFilter(angles=False)
+
+        self.to(device)
+
+        with torch.no_grad():
+            self.target = self.f(target_img)[0]
+
+            if normalize:
+                self.norm_denominator = self.target.max()
+                self.target = self.target / self.norm_denominator
+            else:
+                self.norm_denominator = 1.
+
+            self.target[self.target < self.threshold] = 0
+
+    def forward(self, img, features=None):
+        inp = self.f(img)[0] / self.norm_denominator
+        inp[inp < self.threshold] = 0
+        res = F.mse_loss(inp, self.target)
+        return res
 
 
 class BlurredSobelEdgeLoss(nn.Module):
@@ -190,7 +225,7 @@ class BlurredSobelEdgeLoss(nn.Module):
         self.f = SobelFilter(angles=False)
         self.blur = GaussFilter(sigma)
         self.to(device)
-        
+
         with torch.no_grad():
             self.target = self.apply(target)
 

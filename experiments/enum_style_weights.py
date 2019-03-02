@@ -7,20 +7,20 @@ from PIL import Image
 
 from cast import *
 
-
 assert os.path.exists('./runs'), "Check working dir"
 
 RESOLUTIONS = [
     256,
     512,
-    768,
     1024
 ]
 
+STYLE_WEIGHT = [1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10]
+
 CONTENT_IMAGES = [
-   'bottles',
-    # 'portrait6',
-    # 'nature',
+    'bottles',
+    'portrait6',
+    'nature',
 ]
 
 STYLE_IMAGES = [
@@ -31,10 +31,9 @@ STYLE_IMAGES = [
     'sketch',
 ]
 
-RESULT_PATH = f'runs/resolutions-{datetime.now().isoformat()}'
+RESULT_PATH = f'runs/sweights-{datetime.now().isoformat()}'
 
 os.makedirs(RESULT_PATH)
-
 
 def dump_sources():
     """Copies everything experiment depends on to make result reproducible"""
@@ -50,7 +49,6 @@ def dump_sources():
 
 FAIL_IMAGE = Image.new('RGB', (100, 100), (255, 0, 0))
 
-
 print(f'Run dir: {RESULT_PATH}')
 dump_sources()
 
@@ -64,37 +62,20 @@ for content_name in CONTENT_IMAGES:
     for style_name in STYLE_IMAGES:
         image_dest = f'{RESULT_PATH}/{content_name}__{style_name}'
         os.makedirs(image_dest)
-        
-        for style_size in RESOLUTIONS:
-            for content_size in RESOLUTIONS:
-                
-                content = load_image(f'images/content/{content_name}.jpg', content_size)
-                style = load_image(f'images/styles/{style_name}.jpg', style_size)
-                
-                res = f'{image_dest}/c{content_size}__s{style_size}.jpg'
+
+        for size in RESOLUTIONS:
+            for w in STYLE_WEIGHT:
+                content = load_image(f'images/content/{content_name}.jpg', size)
+                style = load_image(f'images/styles/{style_name}.jpg', size)
+
+                res = f'{image_dest}/{w:.0e}__s{size}.jpg'
 
                 print(res)
 
-                try:
-                    result = perform_transfer(
-                        net, content, style,
-                        1e8,
-                        'sobel', {}, 1e2,
-                        device=device
-                    )
-                    save_image(result, res)
-                except Exception as e:
-                    print(e)
-                    FAIL_IMAGE.save(res)
-
-                res = f'{image_dest}/c{content_size}__s{style_size}_ne.jpg'
-
                 result = perform_transfer(
                     net, content, style,
-                    1e8,
+                    w,
+                    init='cpn',
                     device=device
                 )
                 save_image(result, res)
-
-
-

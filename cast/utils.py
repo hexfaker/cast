@@ -1,4 +1,7 @@
+import shutil
 from typing import Union
+from pathlib import Path
+from datetime import datetime
 
 import numpy as np
 import torch
@@ -66,3 +69,54 @@ def save_image(image: Union[torch.tensor, np.ndarray], path: str):
         image = tensor2ndimage(image)
 
     Image.fromarray(image).save(path)
+
+
+class ExperimentRun:
+    def __init__(self, name):
+        runs_dir = Path('runs')
+        assert runs_dir.is_dir(), 'Check working dir'
+
+        timestamp = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+        self.results_dir = runs_dir / f'{name}__{timestamp}'
+
+        self.results_dir.mkdir()
+
+        print(f'Run dir: {self.results_dir}')
+
+    def load_style(self, name, size, item_dir=None):
+        path = f'images/styles/{name}.jpg'
+        if item_dir:
+            shutil.copy(path, item_dir / 'style.jpg')
+        return load_image(path, size)
+
+    def load_content(self, name, size, item_dir=None):
+        path = f'images/content/{name}.jpg'
+        if item_dir:
+            shutil.copy(path, item_dir / 'content.jpg')
+        return load_image(path, size)
+
+    def dump_sources(self):
+        """Copies everything experiment depends on to make result reproducible"""
+
+        dirs = ['cast', 'images', 'experiments']
+
+        dest_path = self.results_dir / 'root'
+        dest_path.mkdir()
+
+        for d in dirs:
+            shutil.copytree(
+                d, f'{dest_path}/{d}',
+                ignore=lambda _, names: ['__pycache__'] if '__pycache__' in names else []
+            )
+
+    def make_item_dir(self, name):
+        res = self.results_dir / name
+        res.mkdir()
+
+        return res
+
+
+def get_device():
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    print(f'Running on {device}')
+    return device

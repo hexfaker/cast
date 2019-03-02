@@ -7,6 +7,7 @@ from . import loss
 
 _EDGE_LOSSES = {
     'sobel': loss.SobelEdgeLoss,
+    'tsobel': loss.ThresholdedSobelEdgeLoss,
     'bsobel': loss.BlurredSobelEdgeLoss
 }
 
@@ -88,7 +89,12 @@ def perform_transfer(
 
     total_loss = loss.LinearCombinationLoss(net, losses, loss_factors).to(device)
 
-    runner = BfgsOptimizer(content_image + torch.rand_like(content_image) / 1000, total_loss,
+    initial_image = content_image
+
+    if init == 'cpn':
+        initial_image += torch.randn_like(content_image) * 1e-3
+
+    runner = BfgsOptimizer(initial_image, total_loss,
                            progressbar_factory,
                            **optim_params)
 
