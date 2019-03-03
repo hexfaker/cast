@@ -8,7 +8,8 @@ from . import loss
 _EDGE_LOSSES = {
     'sobel': loss.SobelEdgeLoss,
     'tsobel': loss.ThresholdedSobelEdgeLoss,
-    'bsobel': loss.BlurredSobelEdgeLoss
+    'bsobel': loss.BlurredSobelEdgeLoss,
+    'soha': loss.SobelHausdorfLoss
 }
 
 

@@ -1,3 +1,4 @@
+import json
 import shutil
 from typing import Union
 from pathlib import Path
@@ -114,6 +115,9 @@ class ExperimentRun:
         res.mkdir()
 
         return res
+
+    def write_json(self, fname, obj):
+        json.dump(obj, (self.results_dir / fname).open('w'), indent=2)
 
 
 def get_device():

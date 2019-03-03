@@ -2,3 +2,4 @@ torch>=0.4.1
 pillow
 numpy
 torchvision>=0.2.5
+scikit-learn

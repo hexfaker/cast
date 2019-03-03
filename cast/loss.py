@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch.nn import Parameter
 import math
+from .metrices import WeightedHausdorffDistance
 
 
 def gram_matrix(y):
@@ -188,6 +189,46 @@ class ThresholdedSobelEdgeLoss(nn.Module):
             other=torch.zeros_like(self.target)
         ) ** 2).mean()
         return res
+
+
+class SobelHausdorfLoss(nn.Module):
+    def __init__(self, target_img, device, normalize=True, threshold=0, downscale_factor=2):
+        super().__init__()
+        self.scale_factor = 1 / downscale_factor
+        self.threshold = threshold
+        self.sobel = SobelFilter(angles=False)
+        self.denom = 1.
+
+        self.to(device)
+
+        with torch.no_grad():
+            self.target = self._get_contour_map(target_img)
+
+        if self.denom:
+            self.denom = self.target.max()
+            self.target /= self.denom
+
+        h, w = self.target.shape[-2:]
+
+        coords = torch.stack((torch.arange(h)[:, None].repeat(1, w),
+                              torch.arange(w)[None, :].repeat(h, 1)),
+                             2).float()
+
+        self.target =  coords[self.target[0] > self.threshold].to(device)
+
+        self.dist = WeightedHausdorffDistance(h, w, device=device)
+
+    def _get_contour_map(self, image, features=None):
+        contours = self.sobel(image)[0]
+        contours = F.interpolate(contours, scale_factor=self.scale_factor, mode='bilinear',
+                                 align_corners=True)
+        contours.squeeze_(1)
+        contours /= self.denom
+        return contours
+
+    def forward(self, image, features=None):
+        contours = self._get_contour_map(image) / self.denom
+        return self.dist(contours, [self.target], (image.shape[-2:], ))
 
 
 class SobelEdgeLoss(nn.Module):
