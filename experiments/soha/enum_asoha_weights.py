@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import json
-
 from cast import *
 
-THRESHOLDS = [0.5, 1, 3, 5, 7, 9, 10]
-SOBEL_WEIGHTS = [1e5, 1e7, 1e9, 1e11]
+THRESHOLDS = [.4, .5, .7, .9]
+SOBEL_WEIGHTS = [1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4]
 
 CONTENT_IMAGES = [
     'bottles',
@@ -18,7 +16,7 @@ STYLE_IMAGES = [
     'sketch',
 ]
 
-exp = ExperimentRun('sobel-weights-2-nonorm')
+exp = ExperimentRun('asoha-weights-2')
 
 exp.dump_sources()
 
@@ -33,9 +31,9 @@ for content_name in CONTENT_IMAGES:
         content = exp.load_content(content_name, 512, res_dest)
         style = exp.load_style(style_name, 512, res_dest)
 
-        for sw in SOBEL_WEIGHTS:
+        for edge_weight in SOBEL_WEIGHTS:
             for t in THRESHOLDS:
-                res = res_dest / f'e={sw:.0e}t={t}.jpg'
+                res = res_dest / f'e={edge_weight:.0e}t={t:.1}.jpg'
 
                 print(res)
 
@@ -43,14 +41,13 @@ for content_name in CONTENT_IMAGES:
                     result = perform_transfer(
                         net, content, style,
                         1e8,
-                        'tsobel', dict(threshold=t, normalize=False), sw,
+                        'asoha', dict(threshold=t), edge_weight,
                         init='cpn',
                         device=device
                     )
                     save_image(result, res)
-
                 except Exception as e:
                     print(e)
                     fails.append(str(res))
 
-json.dump(fails, (exp.results_dir / 'fails.json').open('w'), indent=2)
+exp.write_json('fails.json', fails)

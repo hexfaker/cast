@@ -9,7 +9,8 @@ _EDGE_LOSSES = {
     'sobel': loss.SobelEdgeLoss,
     'tsobel': loss.ThresholdedSobelEdgeLoss,
     'bsobel': loss.BlurredSobelEdgeLoss,
-    'soha': loss.SobelHausdorfLoss
+    'soha': loss.SobelHausdorfLoss,
+    'asoha': loss.AsymetricSobelHausdorfLoss
 }
 
 

@@ -9,8 +9,8 @@ import torch
 from PIL import Image
 import torchvision.transforms.functional as F
 
-_IMAGENET_MEAN = torch.tensor((0.485, 0.456, 0.406))
-_IMAGENET_STD = torch.tensor((0.229, 0.224, 0.225))
+_IMAGENET_MEAN = (0.485, 0.456, 0.406)
+_IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
 def ndimage2tensor(image: np.ndarray) -> torch.Tensor:

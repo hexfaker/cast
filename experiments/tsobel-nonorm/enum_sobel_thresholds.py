@@ -3,8 +3,8 @@ import json
 
 from cast import *
 
-THRESHOLDS = [0.5, 1, 3, 5, 7, 9, 10]
-SOBEL_WEIGHTS = [1e5, 1e7, 1e9, 1e11]
+THRESHOLDS = [0.0, .5, 1., 3., 5., 7., 9., 10.]
+SOBEL_WEIGHTS = [1e3, 1e4, 1e5, 1e6][::-1]
 
 CONTENT_IMAGES = [
     'bottles',
@@ -18,7 +18,7 @@ STYLE_IMAGES = [
     'sketch',
 ]
 
-exp = ExperimentRun('sobel-weights-2-nonorm')
+exp = ExperimentRun('tsobel-thresholds-nonorm')
 
 exp.dump_sources()
 
