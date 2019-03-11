@@ -1,16 +1,18 @@
 from typing import Dict, Any
 
 import torch
+from torch import nn
 import tqdm
 
+from cast.loss import StyleTransferLoss
 from . import loss
 
 _EDGE_LOSSES = {
     'sobel': loss.SobelEdgeLoss,
     'tsobel': loss.ThresholdedSobelEdgeLoss,
-    'bsobel': loss.BlurredSobelEdgeLoss,
     'soha': loss.SobelHausdorfLoss,
-    'asoha': loss.AsymetricSobelHausdorfLoss
+    'asoha': loss.AsymetricSobelHausdorfLoss,
+    'qsobel': loss.l2.QuantileAsymmetricSobelL2Loss
 }
 
 
@@ -68,6 +70,19 @@ class BfgsOptimizer:
         self.progress = None
 
 
+class StyleTransferLossWrapper(nn.Module):
+    def __init__(self, net: nn.Module, loss: StyleTransferLoss):
+        super().__init__()
+        self.loss = loss
+        self.net = net
+
+    def set_targets(self, content, style):
+        self.loss.set_target(self.net, content, style)
+
+    def forward(self, image):
+        return self.loss(image, self.net(image))
+
+
 def perform_transfer(
     net: torch.nn.Module, content_image: torch.Tensor, style_image: torch.Tensor,
     style_weight: float, edge_loss: str = None, edge_loss_params: Dict[str, Any] = None,
@@ -81,15 +96,19 @@ def perform_transfer(
 
     optim_params = optim_params or {}
 
-    losses = [loss.ContentLoss(net, content_image).to(device),
-              loss.StyleLoss(net, style_image).to(device)]
+    losses = [loss.ContentLoss(), loss.StyleLoss()]
     loss_factors = [1., style_weight]
 
     if edge_loss is not None:
-        losses.append(_EDGE_LOSSES[edge_loss](content_image, device=device, **edge_loss_params))
+        losses.append(_EDGE_LOSSES[edge_loss](**edge_loss_params))
         loss_factors.append(edge_weight)
 
-    total_loss = loss.LinearCombinationLoss(net, losses, loss_factors).to(device)
+    total_loss = StyleTransferLossWrapper(
+        net,
+        loss.LinearCombinationLoss(losses, loss_factors)
+    ).to(device)
+
+    total_loss.set_targets(content_image, style_image)
 
     initial_image = content_image
 

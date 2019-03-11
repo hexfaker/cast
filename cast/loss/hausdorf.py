@@ -1,9 +1,9 @@
+import torch
+import torch.nn.functional as F
+import torch.nn as nn
 import math
 
-import numpy as np
-import torch
-from torch import nn
-from sklearn.utils.extmath import cartesian
+from .flters import SobelFilter
 
 
 def cdist(x, y):
@@ -32,7 +32,9 @@ class WeightedHausdorffDistance(nn.Module):
     def __init__(self,
         resized_height, resized_width,
         return_2_terms=False,
-        device=torch.device('cpu')):
+        alpha=4,
+        device=torch.device('cpu')
+    ):
         """
         :param resized_height: Number of rows in the image.
         :param resized_width: Number of columns in the image.
@@ -44,6 +46,7 @@ class WeightedHausdorffDistance(nn.Module):
         super().__init__()
 
         # Prepare all possible (row, col) locations in the image
+        self.alpha = alpha
         self.height, self.width = resized_height, resized_width
         self.resized_size = torch.tensor([resized_height,
                                           resized_width],
@@ -117,7 +120,7 @@ class WeightedHausdorffDistance(nn.Module):
             p_replicated = p.view(-1, 1).repeat(1, n_gt_pts)
 
             eps = 1e-6
-            alpha = 4
+            alpha = self.alpha
 
             # Weighted Hausdorff Distance
             term_1 = (1 / (n_est_pts + eps)) * \
@@ -139,3 +142,88 @@ class WeightedHausdorffDistance(nn.Module):
             res = terms_1.mean() + terms_2.mean()
 
         return res
+
+
+class SobelHausdorfLoss(nn.Module):
+    def __init__(self, target_img, device, normalize=True, alpha=4, threshold=0,
+        downscale_factor=2):
+        super().__init__()
+        self.alpha = alpha
+        self.scale_factor = 1 / downscale_factor
+        self.threshold = threshold
+        self.sobel = SobelFilter(angles=False)
+        self.denom = 1.
+
+        self.to(device)
+
+        with torch.no_grad():
+            self.target = self._get_contour_map(target_img)
+
+        if normalize:
+            self.denom = self.target.max()
+            self.target /= self.denom
+
+        h, w = self.target.shape[-2:]
+
+        coords = torch.stack((torch.arange(h)[:, None].repeat(1, w),
+                              torch.arange(w)[None, :].repeat(h, 1)),
+                             2).float()
+
+        self.target = coords[self.target[0] > self.threshold].to(device)
+
+        self.dist = WeightedHausdorffDistance(h, w, device=device)
+
+    def _get_contour_map(self, image, features=None):
+        contours = self.sobel(image)[0]
+        contours = F.interpolate(contours, scale_factor=self.scale_factor, mode='bilinear',
+                                 align_corners=True)
+        contours.squeeze_(1)
+        contours /= self.denom
+        return contours
+
+    def forward(self, image, features=None):
+        contours = self._get_contour_map(image) / self.denom
+        return self.dist(contours, [self.target], (image.shape[-2:],))
+
+
+class AsymetricSobelHausdorfLoss(nn.Module):
+    def __init__(self, target_img, device, alpha=4,
+        normalize=True, threshold=0, downscale_factor=2):
+        super().__init__()
+        self.scale_factor = 1 / downscale_factor
+        self.alpha = alpha
+        self.threshold = threshold
+        self.sobel = SobelFilter(angles=False)
+        self.denom = 1.
+
+        self.to(device)
+
+        with torch.no_grad():
+            self.target = self._get_contour_map(target_img)
+
+        if normalize:
+            self.denom = self.target.max()
+            self.target /= self.denom
+
+        h, w = self.target.shape[-2:]
+
+        coords = torch.stack((torch.arange(h)[:, None].repeat(1, w),
+                              torch.arange(w)[None, :].repeat(h, 1)),
+                             2).float()
+
+        self.target = coords[self.target[0] > self.threshold].to(device)
+
+        self.dist = WeightedHausdorffDistance(h, w, alpha=self.alpha, return_2_terms=True,
+                                              device=device)
+
+    def _get_contour_map(self, image, features=None):
+        contours = self.sobel(image)[0]
+        contours = F.interpolate(contours, scale_factor=self.scale_factor, mode='bilinear',
+                                 align_corners=True)
+        contours.squeeze_(1)
+        contours /= self.denom
+        return contours
+
+    def forward(self, image, features=None):
+        contours = self._get_contour_map(image) / self.denom
+        return self.dist(contours, [self.target], (image.shape[-2:],))[1]
