@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 from cast import *
+import json
 
-THRESHOLDS = [.9]
-SOBEL_WEIGHTS = [1e0, 1e1,  1e4, 1e6]
+THRESHOLDS = [.9, .93, .95, .97, .99]
+SOBEL_WEIGHTS = [1e4, 1e5, 1e7, 1e9, 1e10]
 
 CONTENT_IMAGES = [
     'bottles',
@@ -16,7 +17,7 @@ STYLE_IMAGES = [
     'sketch',
 ]
 
-exp = ExperimentRun('asoha-weights-new')
+exp = ExperimentRun('qsobel-weights')
 
 exp.dump_sources()
 
@@ -31,23 +32,22 @@ for content_name in CONTENT_IMAGES:
         content = exp.load_content(content_name, 512, res_dest)
         style = exp.load_style(style_name, 512, res_dest)
 
-        for edge_weight in SOBEL_WEIGHTS:
+        for sw in SOBEL_WEIGHTS:
             for t in THRESHOLDS:
-                res = res_dest / f'e={edge_weight:.0e}t={t:.1}.jpg'
-
-                print(res)
+                res = res_dest / f'e={sw:.0e}t={t}.jpg'
 
                 try:
                     result = perform_transfer(
                         net, content, style,
                         1e8,
-                        'asoha', dict(q=t, alpha=4), edge_weight,
+                        'qsobel', dict(q=t), sw,
                         init='cpn',
                         device=device
                     )
                     save_image(result, res)
+
                 except Exception as e:
                     print(e)
                     fails.append(str(res))
 
-exp.write_json('fails.json', fails)
+json.dump(fails, (exp.results_dir / 'fails.json').open('w'), indent=2)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from cast import *
 
-THRESHOLDS = [.4, .6]
+THRESHOLDS = [.9, .93, .96, .99]
 SOBEL_WEIGHTS = [1e-1, 1e0, 1e1, 1e2, 1e3]
 ALPHAS = [0.5, 1, 2, 3]
 
@@ -17,7 +17,7 @@ STYLE_IMAGES = [
     'sketch',
 ]
 
-exp = ExperimentRun('asoha-alphas')
+exp = ExperimentRun('asoha-alphas-new')
 
 exp.dump_sources()
 
@@ -35,7 +35,7 @@ for content_name in CONTENT_IMAGES:
         for a in ALPHAS:
             for edge_weight in SOBEL_WEIGHTS:
                 for t in THRESHOLDS:
-                    res = res_dest / f'a={a}e={edge_weight:.0e}t={t:.1}.jpg'
+                    res = res_dest / f'a={a}e={edge_weight:.0e}t={t}.jpg'
 
                     print(res)
 
@@ -43,13 +43,15 @@ for content_name in CONTENT_IMAGES:
                         result = perform_transfer(
                             net, content, style,
                             1e8,
-                            'asoha', dict(threshold=t, alpha=a), edge_weight,
+                            'asoha', dict(q=t, alpha=a), edge_weight,
                             init='cpn',
                             device=device
                         )
                         save_image(result, res)
                     except Exception as e:
                         print(e)
+                        import traceback
+                        traceback.print_exc()
                         fails.append(str(res))
 
 exp.write_json('fails.json', fails)

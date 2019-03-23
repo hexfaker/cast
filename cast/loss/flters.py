@@ -98,7 +98,7 @@ class CannyEdgeDetector(nn.Module):
         magnitude, angle = inp
         angle_segment_mask = (angle.unsqueeze(0) >= self.lower_bounds) & \
                              (angle.unsqueeze(0) < self.upper_bounds)  # type: torch.Tensor
-        neighbours = F.pad(magnitude, tuple([2] * 4))
+        neighbours = F.pad(magnitude, [2] * 4)
         max_magnitudes = magnitude.clone()
 
         for i, (xs, ys) in enumerate(zip(self.x_shifts, self.y_shifts)):
