@@ -1,10 +1,14 @@
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
+import torch.nn.functional as F
+from skimage.color import rgb2grey
+from skimage.feature import canny
+import numpy as np
 
-from cast.loss.common import StyleTransferLoss
-from cast.loss.utils import Normalizer, threshold_by_quantile
+from .common import StyleTransferLoss
 from .flters import SobelFilter
+from .utils import Normalizer, threshold_by_quantile
+from ..utils import tensor2ndimage
 
 
 def cdist(x, y):
@@ -56,7 +60,7 @@ class AsymmetricHausdorfDistance(nn.Module):
         return result
 
 
-class AsymmetricSobelHausdorfLoss(StyleTransferLoss):
+class AsymmetricSobelHausdorffLoss(StyleTransferLoss):
     def __init__(self, q, alpha, normalize=True, downscale_factor=2):
         super().__init__()
         self.alpha = alpha
@@ -90,6 +94,61 @@ class AsymmetricSobelHausdorfLoss(StyleTransferLoss):
                              2).float().to(target.device)
 
         target = coords[target[0] > 0]
+        self.hausdorf = AsymmetricHausdorfDistance((h, w), original_hw, target, self.alpha)
+
+    def compute(self, image: torch.Tensor, _):
+        contour = self._get_edges(image)
+
+        return self.hausdorf(contour)
+
+
+class AsymmetricCannyHausdorffLoss(StyleTransferLoss):
+    def __init__(self, alpha, normalize=True, downscale_factor=2):
+        super().__init__()
+        self.alpha = alpha
+        self.downscale_factor = downscale_factor
+        self.normalizer = Normalizer(normalize)
+        self.sobel = SobelFilter(False)
+        self.hausdorf: AsymmetricHausdorfDistance = None
+
+    def _get_edges(self, image):
+        contours = self.sobel(image)[0]
+        contours = F.interpolate(
+            contours,
+            scale_factor=1 / self.downscale_factor,
+            mode='bilinear',
+            align_corners=True
+        )
+        return self.normalizer.transform(contours.squeeze(1))
+
+    def _do_canny(self, image: torch.Tensor):
+        ndimage = tensor2ndimage(image.cpu())
+        edges = canny(rgb2grey(ndimage), low_threshold=.5, high_threshold=0.9, use_quantiles=True)
+        edges = edges[1:-1, 1:-1]
+        edges = torch.from_numpy(edges.astype(np.float))\
+            .unsqueeze(0).unsqueeze(0)
+        edges = F.interpolate(
+            edges,
+            scale_factor=1 / self.downscale_factor,
+            mode='bilinear',
+            align_corners=True
+        ).to(image.device)
+        return edges
+
+    def set_target(self, net: nn.Module, content: torch.Tensor, style: torch.Tensor):
+        original_hw = content.shape[-2:]
+        with torch.no_grad():
+            target = self._get_edges(content)
+        self.normalizer.fit_transform(target)
+        target = self._do_canny(content)
+
+        h, w = target.shape[-2:]
+
+        coords = torch.stack((torch.arange(h)[:, None].repeat(1, w),
+                              torch.arange(w)[None, :].repeat(h, 1)),
+                             2).float().to(target.device)
+
+        target = coords[target[0][0] > 0]
         self.hausdorf = AsymmetricHausdorfDistance((h, w), original_hw, target, self.alpha)
 
     def compute(self, image: torch.Tensor, _):

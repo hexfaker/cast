@@ -1,13 +1,13 @@
 import json
 import shutil
-from typing import Union
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Union
 
 import numpy as np
 import torch
-from PIL import Image
 import torchvision.transforms.functional as F
+from PIL import Image
 
 _IMAGENET_MEAN = (0.485, 0.456, 0.406)
 _IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -86,15 +86,19 @@ class ExperimentRun:
 
     def load_style(self, name, size, item_dir=None):
         path = f'images/styles/{name}.jpg'
+        image = load_image(path, size)
+
         if item_dir:
-            shutil.copy(path, item_dir / 'style.jpg')
-        return load_image(path, size)
+            save_image(image, item_dir / 'style.jpg')
+
+        return image
 
     def load_content(self, name, size, item_dir=None):
         path = f'images/content/{name}.jpg'
+        image = load_image(path, size)
         if item_dir:
-            shutil.copy(path, item_dir / 'content.jpg')
-        return load_image(path, size)
+            save_image(image, item_dir / 'content.jpg')
+        return image
 
     def dump_sources(self):
         """Copies everything experiment depends on to make result reproducible"""

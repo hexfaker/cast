@@ -10,8 +10,9 @@ from . import loss
 _EDGE_LOSSES = {
     'sobel': loss.SobelEdgeLoss,
     'tsobel': loss.ThresholdedSobelEdgeLoss,
-    'asoha': loss.AsymmetricSobelHausdorfLoss,
-    'qsobel': loss.l2.QuantileAsymmetricSobelL2Loss
+    'asoha': loss.AsymmetricSobelHausdorffLoss,
+    'qsobel': loss.l2.QuantileAsymmetricSobelL2Loss,
+    'acaha': loss.hausdorff.AsymmetricCannyHausdorffLoss
 }
 
 

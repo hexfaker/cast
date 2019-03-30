@@ -1,5 +1,5 @@
 from .l2 import ThresholdedSobelEdgeLoss, SobelEdgeLoss
-from .hausdorf import AsymmetricSobelHausdorfLoss
+from .hausdorff import AsymmetricSobelHausdorffLoss
 from .common import LinearCombinationLoss, StyleTransferLoss
 from .gatys import ContentLoss, StyleLoss
 
