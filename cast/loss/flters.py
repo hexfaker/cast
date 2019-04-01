@@ -1,8 +1,8 @@
 import math
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 
 def gauss(x, sigma):
@@ -63,12 +63,43 @@ class GaussFilter(nn.Module):
         gk_g = torch.stack([zeros, gk_one_plane, zeros])
         gk_b = torch.stack([zeros, zeros, gk_one_plane])
 
-        return torch.stack([gk_r, gk_g, gk_b])
+        return torch.stack([gk_r, gk_g, gk_b]), ks
+
+    @staticmethod
+    def _noop(x, *args, **kwargs):
+        return x
 
     def __init__(self, sigma):
         super().__init__()
         self.sigma = sigma
-        self.k = nn.Parameter(self.make_kernel(sigma), requires_grad=False)
+        self.f = None
+        if sigma > 0:
+            self.k, self.size = self.make_kernel(sigma)
+            self.k = nn.Parameter(self.k, requires_grad=False)
+            self.f = F.conv2d
+        else:
+            self.size = 0
+            self.k = None
+            self.f = self._noop
+
+    def forward(self, input):
+        return self.f(input, self.k, padding=self.size // 2)
+
+
+class LaplaceFilter(nn.Module):
+
+    @staticmethod
+    def _make_kernel():
+        k = torch.tensor([
+            [0, 1, 0],
+            [1, -4, 1],
+            [0, 1, 0]
+        ], dtype=torch.float).expand(1, 3, 3, 3)
+        return k
+
+    def __init__(self):
+        super().__init__()
+        self.k = nn.Parameter(self._make_kernel(), False)
 
     def forward(self, input):
         return F.conv2d(input, self.k)

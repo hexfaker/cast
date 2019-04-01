@@ -12,7 +12,8 @@ _EDGE_LOSSES = {
     'tsobel': loss.ThresholdedSobelEdgeLoss,
     'asoha': loss.AsymmetricSobelHausdorffLoss,
     'qsobel': loss.l2.QuantileAsymmetricSobelL2Loss,
-    'acaha': loss.hausdorff.AsymmetricCannyHausdorffLoss
+    'acaha': loss.hausdorff.AsymmetricCannyHausdorffLoss,
+    'lap': loss.LapStyleLoss
 }
 
 

@@ -1,12 +1,12 @@
 from typing import List
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 from cast.loss.utils import Normalizer, threshold_by_quantile
-from .flters import SobelFilter, GaussFilter, CannyEdgeDetector
 from .common import StyleTransferLoss
+from .flters import SobelFilter, GaussFilter, CannyEdgeDetector
 
 
 class SobelEdgeLoss(nn.Module):
@@ -97,19 +97,21 @@ class ThresholdedSobelEdgeLoss(nn.Module):
 
 
 class QuantileAsymmetricSobelL2Loss(StyleTransferLoss):
-    def __init__(self, q, normalize=True):
+    def __init__(self, q, sigma=0., normalize=True):
         super().__init__()
         self.normalizer = Normalizer(normalize)
         self.q = q
         self.sobel = SobelFilter(False)
         self.target = None
+        self.blur = GaussFilter(sigma)
 
     def _get_edges(self, image):
         return self.normalizer.transform(self.sobel(image)[0])
 
     def set_target(self, net: nn.Module, content: torch.Tensor, style: torch.Tensor):
         with torch.no_grad():
-            target = self._get_edges(content)
+            blur = self.blur(content)
+            target = self._get_edges(blur)
         target = self.normalizer.fit_transform(target)
         self.target = threshold_by_quantile(target, self.q)
 
