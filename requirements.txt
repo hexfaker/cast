@@ -3,3 +3,4 @@ pillow
 numpy
 torchvision>=0.2.5
 scikit-learn
+imageio
