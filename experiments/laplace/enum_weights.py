@@ -3,21 +3,15 @@ import json
 
 from cast import *
 
-WEIGHTS = [1e0, 1e1, 1e2, 1e3, 1e5, 1e7, 1e9]
+WEIGHTS = [1e1, 5e1, 1e2, 2e2]
 
-CONTENT_IMAGES = [
-    'megan',
-    'boy',
-    'goat',
+STYLE_CONTENT_PAIRS = [
+    ("lap_cartoon2", "girl2"),
+    ("lap_girl3", "boy"),
+    ("smallworld", "kid5")
 ]
 
-STYLE_IMAGES = [
-    'la_muse',
-    'flowers',
-    'smallworld',
-]
-
-exp = ExperimentRun('lapstyle-weights')
+exp = ExperimentRun('lapstyle-weights-1')
 
 exp.dump_sources()
 
@@ -27,35 +21,33 @@ net = Vgg16().to(device)
 
 fails = []
 
-for content_name in CONTENT_IMAGES:
-    for style_name in STYLE_IMAGES:
-        res_dest = exp.make_item_dir(f'{content_name}__{style_name}')
-        content = exp.load_content(content_name, 512, res_dest)
-        style = exp.load_style(style_name, 512, res_dest)
+for style_name, content_name in STYLE_CONTENT_PAIRS:
+    res_dest = exp.make_item_dir(f'{content_name}__{style_name}')
+    content = exp.load_content(content_name, 512, res_dest)
+    style = exp.load_style(style_name, 512, res_dest)
 
-        for sw in WEIGHTS:
-            res = res_dest / f'e={sw:.0e}.jpg'
+    for sw in WEIGHTS:
+        res = res_dest / f'e={sw:.0e}.jpg'
 
-            without_edge = perform_transfer(
+        without_edge = perform_transfer(
+            net, content, style,
+            1e8,
+            iterations=1000,
+            device=device
+        )
+
+        save_image(without_edge, res_dest / 'noedge.jpg')
+
+        try:
+            result = perform_transfer(
                 net, content, style,
                 1e8,
-                device=device, init='cpn'
+                'atlap', dict(detector="lapstyle", normalize=False, reduction="mse"), sw,
+                device=device
             )
-
-            save_image(without_edge, res_dest / 'noedge.jpg')
-
-            try:
-
-                result = perform_transfer(
-                    net, content, style,
-                    1e8,
-                    'lap', dict(), sw,
-                    init='cpn',
-                    device=device
-                )
-                save_image(result, res)
-            except Exception as e:
-                print(e)
-                fails.append(str(res))
+            save_image(result, res)
+        except Exception as e:
+            print(e)
+            fails.append(str(res))
 
 json.dump(fails, (exp.results_dir / 'fails.json').open('w'), indent=2)

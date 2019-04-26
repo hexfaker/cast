@@ -1,7 +1,5 @@
-import torch
 import numpy as np
-from torch import nn
-import torch.nn.functional as F
+import torch
 
 
 def get_quantile(values: torch.Tensor, q: float):
@@ -19,15 +17,16 @@ def threshold_by_quantile(values: torch.Tensor, q: float):
 
 
 class Normalizer:
-    def __init__(self, enabled=True):
+    def __init__(self, enabled=True, q=1):
         self.enabled = enabled
         self.denom = 1
+        self.q = q
 
     def fit_transform(self, t: torch.Tensor):
         assert not t.requires_grad, 'Target should be detached'
 
         if self.enabled:
-            self.denom = t.max()
+            self.denom = get_quantile(t, self.q)
             t /= self.denom
 
         return t
