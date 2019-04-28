@@ -44,8 +44,8 @@ class StyleLoss(StyleTransferLoss):
 
     def compute(self, image: torch.Tensor, features: List[torch.Tensor]):
         input_grams = [gram_matrix(f) for f in features]
-        loss = F.mse_loss(input_grams[0], self.target_grams[0])
+        loss = ((input_grams[0] - self.target_grams[0]) ** 2).sum()
         for i in range(1, len(input_grams)):
-            loss = loss + F.mse_loss(input_grams[i], self.target_grams[i])
-        loss /= 5
+            loss = loss + ((input_grams[i] - self.target_grams[i]) ** 2).sum()
+        loss /= len(input_grams)
         return loss
