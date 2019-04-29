@@ -6,6 +6,7 @@ STYLE_CONTENT_PAIRS = [
     ("la_muse", "details3"),
     ("la_muse", "portrait3"),
     ("modern_abstract", "details1"),
+    #
     ("abstract", "bottles"),
     ("abstract", "details3"),
     ("abstract", "details4"),
@@ -25,7 +26,7 @@ STYLE_CONTENT_PAIRS = [
     ("lowdetail_aqua", "portrait9")
 ]
 
-exp = ExperimentRun('lapstyle_vs_sobel_gs_4')
+exp = ExperimentRun('scaling-lum_1')
 
 exp.dump_sources()
 
@@ -45,6 +46,16 @@ for s, c in STYLE_CONTENT_PAIRS:
     content = exp.load_content(c, 512, item_dir)
     style = exp.load_style(s, 512, item_dir)
 
+    for ew in [1e-1, 1e0, 5e0, 1e1]:
+        with_scaling = perform_transfer(
+            vgg, content, style,
+            1e4,
+            'atlap', dict(detector="sobel_gs", reduction="mse", mode="lum", norm_q=.9), ew,
+            device=device, init='cpn'
+        )
+        res_path = item_dir / f'sc_w={ew:g}.jpg'
+        save_image(with_scaling, res_path)
+
     without_edge = perform_transfer(
         vgg, content, style,
         1e8,
@@ -53,22 +64,3 @@ for s, c in STYLE_CONTENT_PAIRS:
 
     save_image(without_edge, item_dir / 'noedge.jpg')
 
-    for ew in [1, 5, 10]:
-        res = perform_transfer(
-            vgg, content, style,
-            1e4,
-            'atlap', dict(detector="sobel_gs", normalize=False, reduction="mse"), ew,
-            device=device, init='cpn'
-        )
-        res_path = item_dir / f'qt_e={ew:g}.jpg'
-        save_image(res, res_path)
-
-
-    for lew in [50, 100, 200]:
-        lapstyle_1 = perform_transfer(
-            vgg, content, style,
-            1e4,
-            'atlap', dict(detector="lapstyle", normalize=False, reduction="mse"), lew,
-            device=device
-        )
-        save_image(lapstyle_1, item_dir / f'lapstyle_e={lew:06d}.jpg')

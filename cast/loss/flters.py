@@ -10,6 +10,24 @@ def gauss(x, sigma):
     return 1 / (math.pi * ss) * torch.exp(-x / ss)
 
 
+class ToGray(nn.Module):
+    def __init__(self, mode='lum'):
+        super().__init__()
+
+        if mode == "lum":
+            self.weights = (.2126, .7152, .0722)
+        else:
+            self.weights = (0.3333, )
+
+    def f(self, image: torch.Tensor):
+        w = image.new(self.weights).view(1, -1, 1, 1)
+        res = (w * image).sum(-3, keepdim=True)
+        return res
+
+    def forward(self, image):
+        return self.f(image)
+
+
 class SobelFilter(nn.Module):
     """
     Input: Image in pytorch format ([1 x ] x 3 x W x H)
@@ -18,34 +36,33 @@ class SobelFilter(nn.Module):
 
     # noinspection PyArgumentList
     @staticmethod
-    def make_kernel():
+    def make_kernel(in_ch):
         sobel = torch.FloatTensor(
             [[1., 0., -1.],
              [2., 0., -2.],
              [1., 0., -1.]]
         )
 
-        sobel_x_rgb = torch.stack([sobel] * 3, 0)
-        sobel_y_rgb = torch.stack([sobel.t()] * 3, 0)
+        sobel_x_rgb = torch.stack([sobel] * in_ch, 0)
+        sobel_y_rgb = torch.stack([sobel.t()] * in_ch, 0)
 
         return torch.stack([sobel_x_rgb, sobel_y_rgb])
 
-    def __init__(self, angles=True):
+    def __init__(self, angles=True, in_channels=3):
         super().__init__()
+        self.in_channels = in_channels
         self.angles = angles
-        self.k = nn.Parameter(self.make_kernel(), requires_grad=False)
+        self.k = nn.Parameter(self.make_kernel(self.in_channels), requires_grad=False)
 
     def forward(self, inp):
         sobel_xy = F.conv2d(inp, self.k)
         magnitude = torch.sqrt((sobel_xy ** 2).sum(dim=1, keepdim=True))
 
-        res = [magnitude]
-
         if self.angles:
             angle = torch.atan2(sobel_xy[1], sobel_xy[0])
-            res.append(angle)
-
-        return res
+            return magnitude, angle
+        else:
+            return magnitude
 
 
 class GaussFilter(nn.Module):

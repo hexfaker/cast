@@ -57,7 +57,7 @@ class BfgsOptimizer:
             raise Exception(f'{self.loss} occured in optimization')
 
         self.progress.update()
-        self.progress.set_description(f'{loss_value:.5f}')
+        self.progress.set_description(f'{loss_value:g}')
 
         return self.loss
 

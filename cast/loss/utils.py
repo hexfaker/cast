@@ -27,11 +27,13 @@ class Normalizer:
 
         if self.enabled:
             self.denom = get_quantile(t, self.q)
+            print(self.denom)
             t /= self.denom
 
         return t
 
     def transform(self, t: torch.Tensor):
         if self.enabled:
-            return t / self.denom
+            v = t / self.denom
+            return v
         return t
